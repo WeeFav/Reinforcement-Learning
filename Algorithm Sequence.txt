@@ -1,0 +1,6 @@
+1. Value Iteration / Policy Iteration
+2. Q-learning / SARSA
+3. DQN
+4. Policy Gradient
+5. REINFORCE with baseline
+6. Actor Critic

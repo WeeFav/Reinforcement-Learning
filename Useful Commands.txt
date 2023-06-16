@@ -1,0 +1,5 @@
+# Create virtual env
+python -m virtualenv -p (path to python version) (name of environment)
+
+# Change disk
+cd -Path D:\
