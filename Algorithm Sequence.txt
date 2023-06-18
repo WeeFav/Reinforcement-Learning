@@ -2,5 +2,8 @@
 2. Q-learning / SARSA
 3. DQN
 4. Policy Gradient
-5. REINFORCE with baseline
-6. Actor Critic
+5. REINFORCE with baseline (subtracting policy gradient with a value function)
+6. Actor Critic (similar to REINFORCE with baseline, but use bootstrapping instead of Monte Carlo for calculating expected return)
+Difference between 5 and 6 is that 5 use Monte Carlo as baseline and 6 use temporal difference at each time step as baseline
+In 5, we call the value_function neural network at the end of each EPISODE. Have more variance in baseline as it predicts the baseline after each EPISODE
+In 6, we call the value_function neural network at the end of each STEP. Have less variance in baseline as it predicts the baseline after each STEP.
