@@ -1,8 +1,18 @@
 # Create virtual env
+# will create a folder for you
 python -m virtualenv -p (path to python version) (name of environment)
 
 # Change disk
-cd -Path D:\
+cd D:\
 
 # Force reinstall pip (when you move .venv environement to another folder)
 python -m pip install --upgrade --force-reinstall pip
+
+# Install CUDA
+pip install torch==1.7.1+cu110 -f https://download.pytorch.org/whl/torch_stable.html
+
+--or--
+
+pip install https://download.pytorch.org/whl/cu101/torch-1.4.0-cp37-cp37m-win_amd64.whl
+
+- also need to install cuda toolkit from nividia
