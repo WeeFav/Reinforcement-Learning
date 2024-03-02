@@ -42,7 +42,7 @@ class Grid:
 
         pygame.draw.rect(self.window, [255, 255, 55], [self.x, self.y, self.width, self.height], 0)
         pygame.draw.rect(self.window, [255, 0, 0], [self.rx, self.ry, self.width, self.height], 0)
-        pygame.draw.rect(self.window, [0, 0, 0], [0, 0, 100, 100], 0)
+        # pygame.draw.rect(self.window, [0, 0, 0], [0, 0, 100, 100], 0)
 
         
         pygame.display.update()
@@ -78,7 +78,7 @@ class Grid:
             pygame.draw.line(self.window, "gray", (0, r*self.TIESIZE), (self.window.get_width(), r*self.TIESIZE))
 
         pygame.draw.rect(self.window, [255, 0, 0], [self.rx, self.ry, self.width, self.height], 0)
-        pygame.draw.rect(self.window, [0, 0, 0], [0, 0, 100, 100], 0)
+        # pygame.draw.rect(self.window, [0, 0, 0], [0, 0, 100, 100], 0)
         pygame.draw.rect(self.window, [255, 255, 55], [self.x, self.y, self.width, self.height], 0)
         
         pygame.display.update()
@@ -112,8 +112,8 @@ class Grid:
         new_window.blit(text1, textRect1)
         new_window.blit(text2, textRect2)
         
-        pygame.draw.rect(new_window, [0, 0, 0], [0, 0, 100, 100], 0)
-        pygame.draw.rect(new_window, [0, 0, 0], [0+350, 0, 100, 100], 0)
+        # pygame.draw.rect(new_window, [0, 0, 0], [0, 0, 100, 100], 0)
+        # pygame.draw.rect(new_window, [0, 0, 0], [0+350, 0, 100, 100], 0)
         pygame.draw.rect(new_window, [255, 0, 0], [self.rx, self.ry, self.width, self.height], 0)
         pygame.draw.rect(new_window, [255, 0, 0], [self.rx+350, self.ry, self.width, self.height], 0)
         pygame.draw.rect(new_window, [255, 255, 55], [choice1[0][0], choice1[0][1], self.width, self.height], 0)
