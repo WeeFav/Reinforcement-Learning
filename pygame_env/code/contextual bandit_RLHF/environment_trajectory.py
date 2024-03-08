@@ -32,6 +32,9 @@ class Grid:
         self.frame_iteration = 0
         self.game_over = False
 
+    def show_inital(self, x, y):
+        self.x = x
+        self.y = y
         # inital game window
         self.window = pygame.display.set_mode((self.COLUMNS*self.TIESIZE, self.ROWS*self.TIESIZE))
         self.window.fill("white")
@@ -42,20 +45,15 @@ class Grid:
 
         pygame.draw.rect(self.window, [255, 255, 55], [self.x, self.y, self.width, self.height], 0)
         pygame.draw.rect(self.window, [255, 0, 0], [self.rx, self.ry, self.width, self.height], 0)
-        # pygame.draw.rect(self.window, [0, 0, 0], [0, 0, 100, 100], 0)
-
-        
         pygame.display.update()
-        self.clock.tick(5)
+        self.clock.tick(1)
 
     def step(self, action, tick):
-        self.frame_iteration += 1
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
 
-        # collect user input
         if ((action == 0) and (self.y - 50 >= 0)): # up
             self.y -= 50
         elif ((action == 1) and (self.y + 50 <= (self.ROWS-1)*self.TIESIZE)): # down
@@ -78,7 +76,6 @@ class Grid:
             pygame.draw.line(self.window, "gray", (0, r*self.TIESIZE), (self.window.get_width(), r*self.TIESIZE))
 
         pygame.draw.rect(self.window, [255, 0, 0], [self.rx, self.ry, self.width, self.height], 0)
-        # pygame.draw.rect(self.window, [0, 0, 0], [0, 0, 100, 100], 0)
         pygame.draw.rect(self.window, [255, 255, 55], [self.x, self.y, self.width, self.height], 0)
         
         pygame.display.update()
@@ -87,7 +84,7 @@ class Grid:
         return self.game_over
 
     def get_state(self):
-        return (self.x, self.y)
+        return self.x, self.y
 
     def query(self, curr_x, curr_y, a0, a1, value):
         new_window = pygame.display.set_mode((self.COLUMNS*self.TIESIZE*2+(2*self.TIESIZE), self.ROWS*self.TIESIZE+50))

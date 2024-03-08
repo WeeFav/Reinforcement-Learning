@@ -1,5 +1,5 @@
 import random
-from environment import Grid
+from environment_pair import Grid
 from torch import nn
 import torch
 import torch.nn as nn
@@ -161,18 +161,8 @@ def distance():
 
     for x in range(0, 250, 50):
         for y in range(0, 250, 50):
-            if ((x,y) == (0,0)):
-                value = -1
-            elif ((x,y) == (50,0)):
-                value = -1
-            elif ((x,y) == (0,50)):
-                value = -1
-            elif ((x,y) == (50,50)):
-                value = -1
-            else:
-                value = 1 - math.sqrt(pow((target_x - x), 2) + pow((target_y - y), 2))
-                value = numpy.interp(value, [-282,0], [0,1])
-
+            value = 1 - math.sqrt(pow((target_x - x), 2) + pow((target_y - y), 2))
+            value = numpy.interp(value, [-282,0], [0,1])
             agent.V[(x,y)] = value
 
     with open('value.pkl', 'wb') as fp:
@@ -270,10 +260,10 @@ def play_games():
             
 if __name__ == '__main__':
     # V = value_iteration(lr=0.2)
-    # V = distance()
-    # showValues(V)
+    V = distance()
+    showValues(V)
 
-    with open('value.pkl', 'rb') as fp:
-        value = pickle.load(fp)
+    # with open('value.pkl', 'rb') as fp:
+    #     value = pickle.load(fp)
 
-    train(value)
+    # train(value)

@@ -1,9 +1,12 @@
 import random
-from environment_pair import Grid
+from environment_trajectory import Grid
 import math
 import numpy as np
 from scipy import optimize
 import pickle
+
+S = list(range(0,4)) + list(range(5,25))
+H = 5
 
 def det_coord(s):
     col = (s % 5) * 50
@@ -17,9 +20,7 @@ def det_s(x, y):
 
     return col * 5 + row
 
-def allowed_actions(coord):
-    x = coord[0]
-    y = coord[1]
+def allowed_actions(x, y):
     actions = [0, 1, 2, 3]
 
     if (y == 200):
@@ -33,34 +34,48 @@ def allowed_actions(coord):
 
     return actions
 
-def create_D(value, save):
+def create_D():
     env = Grid()
     D = []
 
-    i = 0
-    while i < 1000:
-        # sample a state
-        s = random.randrange(25)
-        # determine coordiate of s
-        curr_x, curr_y = det_coord(s)
-        # determine valid actions
-        actions = allowed_actions((curr_x, curr_y))
-        # sample 2 actions
-        a0, a1 = random.sample(actions, 2)
-        # query human
-        pref = env.query(curr_x, curr_y, a0, a1, value)
-        if pref == 'incomparable':
-            continue
-        # append into dataset
-        D.append([s, a0, a1, pref])
-        i += 1
+    for i in range(3):
+        d = []
 
-    if save:
-        with open('D_pair.pkl', 'wb') as fp:
-            pickle.dump(D, fp)
-            print('D saved successfully to file')
-    
-    return D
+        # sample a state
+        init_s = random.choice(S)
+        d.append(init_s)
+
+        # determine coordiate of s
+        curr_x, curr_y = det_coord(init_s)
+
+        for j in range(2):
+            trajectory = []
+
+            # generate trajectory of length H
+            env.show_inital(curr_x, curr_y)
+            done = False
+            for h in range(H):
+                if done:
+                    env.reset()
+
+                # determine valid actions
+                actions = allowed_actions(curr_x, curr_y)
+
+                # sample an action
+                a = random.choice(actions)
+                trajectory.append(a)
+
+                # step 
+                done = env.step(a, 1)
+                curr_x, curr_y = env.get_state()
+                trajectory.append(det_s(curr_x, curr_y))
+            
+            d.append(trajectory)
+
+        D.append(d)
+        
+    print(D)
+
 
 def phi(s, a):
     feature = [0] * (25 * 4)
@@ -108,14 +123,6 @@ def solve(D, init_parameter, save):
 
                 
 if __name__ == '__main__':
-    with open('value.pkl', 'rb') as fp:
-        value = pickle.load(fp)
-
-    # training
-    print("querying....")
-    D = create_D(value, save=True)
-    print("optimizing....")
-    init_parameter = [1] * 100
-    solve(D, init_parameter, save=True)
+    create_D()
 
 

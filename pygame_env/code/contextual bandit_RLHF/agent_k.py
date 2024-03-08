@@ -17,25 +17,26 @@ def det_s(x, y):
 
     return col * 5 + row
 
-def create_D():
+def create_D(save):
     env = Grid()
     D = []
 
-    for i in range(25):
+    for i in range(10):
         if (i == 4):
             continue
         # sample a state
-        # s = random.randrange(25)
-        s = i
+        s = random.randrange(25)
+        # s = i
         # determine coordiate of s
         curr_x, curr_y = det_coord(s)
         # query human for ranking
         rank = env.query(curr_x, curr_y)
         D.append([s,0,1,2,3,rank])
 
-    with open('D.pkl', 'wb') as fp:
-        pickle.dump(D, fp)
-        print('D saved successfully to file')
+    if save:
+        with open('D.pkl', 'wb') as fp:
+            pickle.dump(D, fp)
+            print('D saved successfully to file')
 
     return D
 
@@ -63,37 +64,40 @@ def mle_loss(parameter, D):
     
     return -1 / len(D) * loss
 
-def solve(D, init_parameter):
+def solve(D, init_parameter, save):
     result = optimize.minimize(mle_loss, init_parameter, args=D)
 
-    with open('result.pkl', 'wb') as fp:
-        pickle.dump(result, fp)
-        print('result saved successfully to file')
+    if save:
+        with open('result.pkl', 'wb') as fp:
+            pickle.dump(result, fp)
+            print('result saved successfully to file')
   
     print(result.x)   
                 
 if __name__ == '__main__':
     # training
     # print("querying....")
-    # D = create_D()
+    # D = create_D(save=False)
     # print("optimizing....")
-    # init_parameter = [0] * 100
-    # solve(D, init_parameter)
+    # init_parameter = [1] * 100
+    # solve(D, init_parameter, save=False)
 
     # testing
     with open('result.pkl', 'rb') as fp:
         result = pickle.load(fp)
 
-    env = Grid()
-    while True:
-        done = False
-        env.reset()
-        while not done:
-            x, y = env.get_state()
-            s = det_s(x, y)
-            reward_s = result.x[s*4:s*4+4]
-            action = np.argmax(reward_s)
-            done = env.step(action, 1)
+    print(result)
+
+    # env = Grid()
+    # while True:
+    #     done = False
+    #     env.reset()
+    #     while not done:
+    #         x, y = env.get_state()
+    #         s = det_s(x, y)
+    #         reward_s = result.x[s*4:s*4+4]
+    #         action = np.argmax(reward_s)
+    #         done = env.step(action, 1)
 
 
 
