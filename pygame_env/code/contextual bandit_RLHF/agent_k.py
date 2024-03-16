@@ -4,6 +4,65 @@ import math
 import numpy as np
 from scipy import optimize
 import pickle
+import itertools
+
+def allowed_actions(x, y):
+    actions = [0, 1, 2, 3]
+
+    if (y == 200):
+        actions.remove(1)
+    if (x == 0):
+        actions.remove(2)
+    if (x == 200):
+        actions.remove(3)
+    if (y == 0):
+        actions.remove(0)
+
+    return actions
+
+def set_synthetic_reward():
+    synthetic_reward = []
+    for s in range(25):
+        x, y = det_coord(s)
+        action_list = allowed_actions(x, y)
+        for a in range(4):
+            if a not in action_list:
+                synthetic_reward.append(-10)
+            elif (x == 150 and y == 0 and a == 3):
+                synthetic_reward.append(10)
+            elif (x == 200 and y == 50 and a == 0):
+                synthetic_reward.append(10)
+            else:
+                synthetic_reward.append(0)
+    return synthetic_reward
+
+def set_prob_matrix(synthetic_reward):
+    prob_matrix = dict()
+    permutation = list(itertools.permutations([0,1,2,3]))
+    for s in range(25):
+        permutation_list = []
+        action_list = allowed_actions(*det_coord(s))
+        for p in range(len(permutation)):
+            prob = 1
+            for i in range(len(action_list)):
+                t1 = math.exp(reward(synthetic_reward, s, permutation[p][i]))
+                t2 = 0
+                for j in range(i, len(action_list)):
+                    t2 += math.exp(reward(synthetic_reward, s, permutation[p][j]))
+                prob *= t1 / t2
+            permutation_list.append(prob)
+        prob_matrix[s] = permutation_list
+
+    return prob_matrix
+
+def permutation_lookup(index):
+    permutation = list(itertools.permutations([0,1,2,3]))
+    return permutation[index]
+
+def find_max_prob_list(prob_list):
+    m = max(prob_list)
+    max_prob_list = [i for i, j in enumerate(prob_list) if j == m]
+    return max_prob_list
 
 def det_coord(s):
     col = (s % 5) * 50
@@ -71,8 +130,6 @@ def solve(D, init_parameter, save):
         with open('result.pkl', 'wb') as fp:
             pickle.dump(result, fp)
             print('result saved successfully to file')
-  
-    print(result.x)   
                 
 if __name__ == '__main__':
     # training
@@ -86,18 +143,20 @@ if __name__ == '__main__':
     with open('result.pkl', 'rb') as fp:
         result = pickle.load(fp)
 
-    print(result)
-
-    # env = Grid()
-    # while True:
-    #     done = False
-    #     env.reset()
-    #     while not done:
-    #         x, y = env.get_state()
-    #         s = det_s(x, y)
-    #         reward_s = result.x[s*4:s*4+4]
-    #         action = np.argmax(reward_s)
-    #         done = env.step(action, 1)
-
-
-
+    env = Grid()
+    while True:
+        done = False
+        env.reset()
+        while not done:
+            x, y = env.get_state()
+            s = det_s(x, y)
+            reward_s = result.x[s*4:s*4+4]
+            action = np.argmax(reward_s)
+            done = env.step(action, 1)
+    # synthetic_reward = set_synthetic_reward()
+    # print(synthetic_reward)
+    # prob_matrix = set_prob_matrix(synthetic_reward)
+    # max_prob_list = find_max_prob_list(prob_matrix[23])
+    # p = [permutation_lookup(l) for l in max_prob_list]
+    # print((p))
+    # print(permutation_lookup())
