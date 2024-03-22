@@ -124,29 +124,37 @@ def solve(D, init_parameter, save):
         with open('result.pkl', 'wb') as fp:
             pickle.dump(result, fp)
             print('result saved successfully to file')
-                
-if __name__ == '__main__':
-    # training
+
+def train():
     print("querying....")
     D = create_D(save=False)
-    # print("optimizing....")
-    # init_parameter = [1] * 100
-    # solve(D, init_parameter, save=False)
+    print("optimizing....")
+    init_parameter = [0] * 100
+    solve(D, init_parameter, save=True)
+
+def test(result):
+    env = Grid()
+    while True:
+        done = False
+        env.reset()
+        while not done:
+            row, col = env.get_state()
+            s = det_s(row, col)
+            reward_s = result.x[s*4:s*4+4]
+            action = np.argmax(reward_s)
+            done = env.step(action)
+         
+if __name__ == '__main__':
+    # training
+    train()
 
     # testing
-    # with open('result.pkl', 'rb') as fp:
-    #     result = pickle.load(fp)
+    with open('result.pkl', 'rb') as fp:
+        result = pickle.load(fp)
 
-    # env = Grid()
-    # while True:
-    #     done = False
-    #     env.reset()
-    #     while not done:
-    #         x, y = env.get_state()
-    #         s = det_s(x, y)
-    #         reward_s = result.x[s*4:s*4+4]
-    #         action = np.argmax(reward_s)
-    #         done = env.step(action, 1)
+    test(result)
+
+
     # synthetic_reward = set_synthetic_reward()
     # print(synthetic_reward)
     # prob_matrix = set_prob_matrix(synthetic_reward)
