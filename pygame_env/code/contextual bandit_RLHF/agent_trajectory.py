@@ -5,70 +5,53 @@ import numpy as np
 from scipy import optimize
 import pickle
 
-S = list(range(0,4)) + list(range(5,25))
 H = 5
 
 def det_coord(s):
-    col = (s % 5) * 50
-    row = (s // 5) * 50
+    row = (s // 5)
+    col = (s % 5)
 
-    return col, row
+    return row, col
 
-def det_s(x, y):
-    col = x // 50
-    row = y // 50
-
-    return col * 5 + row
-
-def allowed_actions(x, y):
-    actions = [0, 1, 2, 3]
-
-    if (y == 200):
-        actions.remove(1)
-    if (x == 0):
-        actions.remove(2)
-    if (x == 200):
-        actions.remove(3)
-    if (y == 0):
-        actions.remove(0)
-
-    return actions
+def det_s(row, col):
+    return row * 5 + col
 
 def create_D():
     env = Grid()
     D = []
+    sq = env.states_to_be_queried()
+    sq = [det_s(coord[0], coord[1]) for coord in sq]
 
     for i in range(3):
         d = []
-
         # sample a state
-        init_s = random.choice(S)
+        init_s = random.choice(sq)
         d.append(init_s)
 
         # determine coordiate of s
-        curr_x, curr_y = det_coord(init_s)
+        row, col = det_coord(init_s)
 
         for j in range(2):
             trajectory = []
 
             # generate trajectory of length H
-            env.show_inital(curr_x, curr_y)
+            env.show_inital(row, col)
             done = False
             for h in range(H):
                 if done:
                     env.reset()
 
                 # determine valid actions
-                actions = allowed_actions(curr_x, curr_y)
+                actions = env.allowed_actions(row, col)
 
                 # sample an action
                 a = random.choice(actions)
                 trajectory.append(a)
 
                 # step 
-                done = env.step(a, 1)
-                curr_x, curr_y = env.get_state()
-                trajectory.append(det_s(curr_x, curr_y))
+                done = env.step(a)
+                row, col = env.get_state()
+                trajectory.append(det_s(row, col))
             
             d.append(trajectory)
 
@@ -124,5 +107,7 @@ def solve(D, init_parameter, save):
                 
 if __name__ == '__main__':
     create_D()
+    # env = Grid()
+    # print(env.allowed_actions(2,2))
 
 
