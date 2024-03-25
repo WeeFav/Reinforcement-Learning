@@ -6,6 +6,7 @@ pygame.init()
 ROWS = 5
 COLUMNS = 5
 BLOCKSIZE = 50
+SPACE = 2 * BLOCKSIZE
 
 world=\
 """
@@ -23,13 +24,21 @@ action_dict = {0:'up',
 
 class Grid():
     def __init__(self):
-        self.screen = pygame.display.set_mode((ROWS*BLOCKSIZE, COLUMNS*BLOCKSIZE))
+        self.screen = pygame.display.set_mode((2*COLUMNS*BLOCKSIZE+SPACE, ROWS*BLOCKSIZE))
+        self.left_screen = pygame.Surface((COLUMNS*BLOCKSIZE, ROWS*BLOCKSIZE))
+        self.right_screen = pygame.Surface((COLUMNS*BLOCKSIZE, ROWS*BLOCKSIZE))
         self.clock = pygame.time.Clock()
         self.FPS = 3
         self.world = world.split('\n')[1:-1]
         self.walls = pygame.sprite.Group()
         self.goals = pygame.sprite.Group()
         self.players = pygame.sprite.Group()
+
+        self.left_player = pygame.sprite.Group()
+        self.left_player.add(Player(0,0))
+        self.right_player = pygame.sprite.Group()
+        self.right_player.add(Player(0,0))
+
         self.done = False
         self.clock.tick(self.FPS)
 
@@ -50,6 +59,7 @@ class Grid():
         self.done = False
         self.show_inital(4, 0)
 
+
     def show_inital(self, row, col):
         # inital game window
         # background
@@ -68,12 +78,37 @@ class Grid():
 
         pygame.display.flip()
 
-    def step(self, action):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
+    def show_inital_2(self, row, col):
+        # inital game window
+        # background
+        self.clock.tick(self.FPS)
+        self.screen.fill("white")
+        self.left_screen.fill("white")
+        self.right_screen.fill("white")
 
+        for c in range (1, COLUMNS):
+            pygame.draw.line(self.left_screen, "gray", (c*BLOCKSIZE, 0), (c*BLOCKSIZE, self.left_screen.get_height()))
+            pygame.draw.line(self.right_screen, "gray", (c*BLOCKSIZE, 0), (c*BLOCKSIZE, self.right_screen.get_height()))
+        for r in range (1, ROWS):
+            pygame.draw.line(self.left_screen, "gray", (0, r*BLOCKSIZE), (self.left_screen.get_width(), r*BLOCKSIZE))
+            pygame.draw.line(self.right_screen, "gray", (0, r*BLOCKSIZE), (self.right_screen.get_width(), r*BLOCKSIZE))
+
+        # environment
+        self.walls.draw(self.left_screen)
+        self.walls.draw(self.right_screen)
+        self.goals.draw(self.left_screen)
+        self.goals.draw(self.right_screen)
+        self.move_left_player(4,0)
+        self.left_player.draw(self.left_screen)
+        self.move_right_player(2,2)
+        self.right_player.draw(self.right_screen)
+
+        self.screen.blit(self.left_screen, (0,0))
+        self.screen.blit(self.right_screen, (COLUMNS*BLOCKSIZE+SPACE,0))
+
+        pygame.display.flip()
+
+    def step(self, action, render):
         # collect user input
         player_row, player_col = self.get_state()            
         if ((action == 0) and (player_row > 0)): # up
@@ -89,21 +124,27 @@ class Grid():
         if (player_row == self.goal_row and player_col == self.goal_col):
             self.done = True
 
-        # update game window
-        # background
-        self.clock.tick(self.FPS)
-        self.screen.fill("white")
-        for c in range (1, COLUMNS):
-            pygame.draw.line(self.screen, "gray", (c*BLOCKSIZE, 0), (c*BLOCKSIZE, self.screen.get_height()))
-        for r in range (1, ROWS):
-            pygame.draw.line(self.screen, "gray", (0, r*BLOCKSIZE), (self.screen.get_width(), r*BLOCKSIZE))
+        # render
+        if (render):
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
+                    
+            # update game window
+            # background
+            self.clock.tick(self.FPS)
+            self.screen.fill("white")
+            for c in range (1, COLUMNS):
+                pygame.draw.line(self.screen, "gray", (c*BLOCKSIZE, 0), (c*BLOCKSIZE, self.screen.get_height()))
+            for r in range (1, ROWS):
+                pygame.draw.line(self.screen, "gray", (0, r*BLOCKSIZE), (self.screen.get_width(), r*BLOCKSIZE))
 
-        # environment
-        self.walls.draw(self.screen)
-        self.goals.draw(self.screen)
-        self.players.draw(self.screen)
-
-        pygame.display.flip()
+            # environment
+            self.walls.draw(self.screen)
+            self.goals.draw(self.screen)
+            self.players.draw(self.screen)
+            pygame.display.flip()
 
         return self.done
     
@@ -144,9 +185,6 @@ class Grid():
                 r.append(a)
         
         return r
-            
-
-            
 
     def get_state(self):
         p = self.players.sprites()
@@ -158,44 +196,34 @@ class Grid():
         p = self.players.sprites()
         p[0].rect.y = row * BLOCKSIZE
         p[0].rect.x = col * BLOCKSIZE
+
+    def move_left_player(self, row, col):
+        p = self.left_player.sprites()
+        p[0].rect.y = row * BLOCKSIZE
+        p[0].rect.x = col * BLOCKSIZE
+
+    def move_right_player(self, row, col):
+        p = self.right_player.sprites()
+        p[0].rect.y = row * BLOCKSIZE
+        p[0].rect.x = col * BLOCKSIZE
     
-    def query(self, curr_row, curr_col):
-        # background
-        new_window = pygame.display.set_mode((COLUMNS*BLOCKSIZE, ROWS*BLOCKSIZE+50))
-        new_window.fill("white")
-        for c in range (1, COLUMNS):
-            pygame.draw.line(new_window, "gray", (c*BLOCKSIZE, 0), (c*BLOCKSIZE, new_window.get_height()-50))
-        for r in range (1, ROWS):
-            pygame.draw.line(new_window, "gray", (0, r*BLOCKSIZE), (new_window.get_width(), r*BLOCKSIZE))
-
-        # environment
-        self.walls.draw(new_window)
-        self.goals.draw(new_window)
-        self.move_player(curr_row, curr_col)
-        self.players.draw(new_window)
-
-        pygame.display.flip()
+    def query(self, init_row, init_col, traj1, traj2):
+        # trajectory 1
+        self.show_inital(init_row, init_col)
+        for i in range(len(traj1)):
+            if (i % 2 == 0):
+                self.step(traj1[i], render=True)
         
-        display_text = ""
-        rank = []
-        for i in range(4):
-            pref = self.get_input_from_human()
-            rank.append(pref)
-            if i != 3:
-                display_text += action_dict[pref] + "->"
-            else:
-                display_text += action_dict[pref]
-            
-            font = font = pygame.font.Font('freesansbold.ttf', 20)
-            text1 = font.render(display_text, True, [0, 0, 0], [255, 255, 255])
-            textRect1 = text1.get_rect()
-            textRect1.center = (125, 270)
-            new_window.blit(text1, textRect1)
-            pygame.display.update()
+        # trajectory 1
+        self.show_inital(init_row, init_col)
+        for i in range(len(traj1)):
+            if (i % 2 == 0):
+                self.step(traj1[i], render=True)
+     
    
         pygame.time.wait(2000)
 
-        return rank            
+        return pref            
 
     def get_input_from_human(self):
         while True:

@@ -35,7 +35,7 @@ def create_D():
             trajectory = []
 
             # generate trajectory of length H
-            env.show_inital(row, col)
+            # env.show_inital(row, col)
             done = False
             for h in range(H):
                 if done:
@@ -49,13 +49,17 @@ def create_D():
                 trajectory.append(a)
 
                 # step 
-                done = env.step(a)
+                done = env.step(a, render=False)
                 row, col = env.get_state()
                 trajectory.append(det_s(row, col))
             
-            d.append(trajectory)
+            d.append(trajectory)            
 
         D.append(d)
+
+        # query human
+        init_row, init_col = det_coord(d[0])
+        pref = env.query(init_row, init_col, d[1], d[2])
         
     print(D)
 
@@ -106,8 +110,8 @@ def solve(D, init_parameter, save):
 
                 
 if __name__ == '__main__':
-    create_D()
-    # env = Grid()
-    # print(env.allowed_actions(2,2))
+    # create_D()
+    env = Grid()
+    env.show_inital_2(0,0)
 
 

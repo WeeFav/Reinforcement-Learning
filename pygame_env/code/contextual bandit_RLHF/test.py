@@ -1,39 +1,47 @@
 import pygame
-from pygame.locals import *
 
+# Initialize Pygame
 pygame.init()
-COLUMNS, ROWS, TIESIZE = 5, 5, 50
 
-window = pygame.display.set_mode((COLUMNS*TIESIZE, ROWS*TIESIZE))
+# Set the dimensions of the game window
+WINDOW_WIDTH = 800
+WINDOW_HEIGHT = 600
 
-x = 0
-y = 4*50
-width = 50
-height = 50
+# Set the dimensions of each player's screen
+SCREEN_WIDTH = WINDOW_WIDTH // 2  # Half of the window width
+SCREEN_HEIGHT = WINDOW_HEIGHT
 
-run = True
-while run:
+# Define colors
+WHITE = (255, 255, 255)
+
+# Create the game window
+window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+
+# Create surfaces for each player's screen
+player1_screen = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+player2_screen = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+
+# Main game loop
+running = True
+while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            run = False
-        elif event.type == KEYDOWN:
-            if ((event.key == K_DOWN) and (y + 50 <= (ROWS-1)*TIESIZE)):
-                y += 50
-            if ((event.key == K_UP) and (y - 50 >= 0)):
-                y -= 50
-            if ((event.key == K_RIGHT) and (x + 50 <= (COLUMNS-1)*TIESIZE)):
-                x += 50
-            if ((event.key == K_LEFT) and ((x - 50 >= 0))):
-                x -= 50
+            running = False
 
-    window.fill("white")
-    for c in range (1, COLUMNS):
-        pygame.draw.line(window, "gray", (c*TIESIZE, 0), (c*TIESIZE, window.get_height()))
-    for r in range (1, ROWS):
-        pygame.draw.line(window, "gray", (0, r*TIESIZE), (window.get_width(), r*TIESIZE))
+    # Fill player screens with white color
+    player1_screen.fill(WHITE)
+    player2_screen.fill(WHITE)
 
-    pygame.draw.rect(window, [255, 255, 55], [x, y, width, height], 0)
+    # Draw something on each player's screen (just as a demonstration)
+    pygame.draw.rect(player1_screen, (255, 0, 0), (50, 50, 100, 100))  # Red rectangle on player 1's screen
+    pygame.draw.rect(player2_screen, (0, 0, 255), (50, 50, 100, 100))  # Blue rectangle on player 2's screen
 
+    # Blit (draw) each player's screen onto the main window
+    window.blit(player1_screen, (0, 0))  # Player 1's screen is on the left
+    window.blit(player2_screen, (SCREEN_WIDTH, 0))  # Player 2's screen is on the right
+
+    # Update the display
     pygame.display.update()
-    
+
+# Quit Pygame
 pygame.quit()
