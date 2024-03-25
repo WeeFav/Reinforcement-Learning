@@ -17,11 +17,6 @@ w www
 p www
 """
 
-action_dict = {0:'up',
-               1:'down',
-               2:'left',
-               3:'right'}
-
 class Grid():
     def __init__(self):
         self.screen = pygame.display.set_mode((2*COLUMNS*BLOCKSIZE+SPACE, ROWS*BLOCKSIZE))
@@ -57,7 +52,8 @@ class Grid():
 
     def reset(self):
         self.done = False
-        self.show_inital(4, 0)
+        self.move_player(4, 0)
+        return self.done
 
 
     def show_inital(self, row, col):
@@ -78,7 +74,7 @@ class Grid():
 
         pygame.display.flip()
 
-    def show_inital_2(self, row, col):
+    def render_2(self, left_row, left_col, right_row, right_col):
         # inital game window
         # background
         self.clock.tick(self.FPS)
@@ -98,13 +94,15 @@ class Grid():
         self.walls.draw(self.right_screen)
         self.goals.draw(self.left_screen)
         self.goals.draw(self.right_screen)
-        self.move_left_player(row, col)
+
+        self.move_left_player(left_row, left_col)
         self.left_player.draw(self.left_screen)
-        self.move_right_player(row, col)
+
+        self.move_right_player(right_row, right_col)
         self.right_player.draw(self.right_screen)
 
         self.screen.blit(self.left_screen, (0,0))
-        self.screen.blit(self.right_screen, (COLUMNS*BLOCKSIZE+SPACE,0))
+        self.screen.blit(self.right_screen, (COLUMNS*BLOCKSIZE+SPACE,0))             
 
         pygame.display.flip()
 
@@ -121,6 +119,7 @@ class Grid():
             self.move_player(player_row, player_col + 1)
 
         # check if game is over
+        player_row, player_col = self.get_state()            
         if (player_row == self.goal_row and player_col == self.goal_col):
             self.done = True
 
@@ -148,63 +147,14 @@ class Grid():
 
         return self.done
     
-    def step_2(self, left_action, right_action, render):
-        # left action
-        player_row, player_col = self.get_left_state()            
-        if ((left_action == 0) and (player_row > 0)): # up
-            self.move_left_player(player_row - 1, player_col)
-        elif ((left_action == 1) and (player_row < 4)): # down
-            self.move_left_player(player_row + 1, player_col)
-        elif ((left_action == 2) and (player_col > 0)): # left
-            self.move_left_player(player_row, player_col - 1)
-        elif ((left_action == 3) and (player_col < 4)): # right
-            self.move_left_player(player_row, player_col + 1)
+    def det_coord(self, s):
+        row = (s // 5)
+        col = (s % 5)
+        return row, col
 
-        # right action
-        player_row, player_col = self.get_right_state()            
-        if ((right_action == 0) and (player_row > 0)): # up
-            self.move_left_player(player_row - 1, player_col)
-        elif ((right_action == 1) and (player_row < 4)): # down
-            self.move_left_player(player_row + 1, player_col)
-        elif ((right_action == 2) and (player_col > 0)): # left
-            self.move_left_player(player_row, player_col - 1)
-        elif ((right_action == 3) and (player_col < 4)): # right
-            self.move_left_player(player_row, player_col + 1)
-
-        # render
-        if (render):
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    quit()
-                    
-            # inital game window
-            # background
-            self.clock.tick(self.FPS)
-            self.screen.fill("white")
-            self.left_screen.fill("white")
-            self.right_screen.fill("white")
-
-            for c in range (1, COLUMNS):
-                pygame.draw.line(self.left_screen, "gray", (c*BLOCKSIZE, 0), (c*BLOCKSIZE, self.left_screen.get_height()))
-                pygame.draw.line(self.right_screen, "gray", (c*BLOCKSIZE, 0), (c*BLOCKSIZE, self.right_screen.get_height()))
-            for r in range (1, ROWS):
-                pygame.draw.line(self.left_screen, "gray", (0, r*BLOCKSIZE), (self.left_screen.get_width(), r*BLOCKSIZE))
-                pygame.draw.line(self.right_screen, "gray", (0, r*BLOCKSIZE), (self.right_screen.get_width(), r*BLOCKSIZE))
-
-            # environment
-            self.walls.draw(self.left_screen)
-            self.walls.draw(self.right_screen)
-            self.goals.draw(self.left_screen)
-            self.goals.draw(self.right_screen)
-            self.left_player.draw(self.left_screen)
-            self.right_player.draw(self.right_screen)
-
-            self.screen.blit(self.left_screen, (0,0))
-            self.screen.blit(self.right_screen, (COLUMNS*BLOCKSIZE+SPACE,0))
-
-            pygame.display.flip()
-
+    def det_s(self, row, col):
+        return row * 5 + col
+    
     def states_to_be_queried(self):
         sq = []
         for row_idx, row in enumerate(self.world):
@@ -276,31 +226,55 @@ class Grid():
         p[0].rect.y = row * BLOCKSIZE
         p[0].rect.x = col * BLOCKSIZE
     
-    def query(self, init_row, init_col, traj1, traj2):
-        self.show_inital_2(init_row, init_col)
-        for i in range(len(traj1)):
-            if (i % 2 == 0):
-                self.step_2(traj1[i], traj2[i], render=True)
-             
-   
-        pygame.time.wait(2000)
+    def query(self, init_row, init_col, left_traj, right_traj):
+        pref = None
+        # loop until get human input
+        while True: 
+            self.render_2(init_row, init_col, init_row, init_col)
+            for i in range(len(left_traj)):
+                if (i % 2 == 1):
+                    left_row, left_col = self.det_coord(left_traj[i]) 
+                    right_row, right_col = self.det_coord(right_traj[i]) 
+                    self.render_2(left_row, left_col, right_row, right_col)
 
-        # return pref            
+            pygame.time.wait(2000)
 
-    def get_input_from_human(self):
-        while True:
+            # human input
             for event in pygame.event.get():
                 if event.type == QUIT:
                     pygame.quit()
                     sys.exit()
-                elif event.type == KEYDOWN and event.key == K_UP:
-                    return 0
-                elif event.type == KEYDOWN and event.key == K_DOWN:
-                    return 1
-                elif event.type == KEYDOWN and event.key == K_LEFT:
-                    return 2
-                elif event.type == KEYDOWN and event.key == K_RIGHT:
-                    return 3 
+                elif event.type == KEYDOWN and event.key == K_a:
+                    pref = 'left'
+                elif event.type == KEYDOWN and event.key == K_d:
+                    pref = 'right'
+                elif event.type == KEYDOWN and event.key == K_s:
+                    pref = 'equal'
+                elif event.type == KEYDOWN and event.key == K_x:
+                    pref = 'incomparable'
+                
+            if (pref is not None):
+                green_box = pygame.Surface([250, 250])
+                green_box.set_alpha(125)
+                green_box.fill([0, 255, 0])
+                red_box = pygame.Surface([250, 250])
+                red_box.set_alpha(125)
+                red_box.fill([255, 0, 0])
+                if pref == 'left':
+                    self.screen.blit(green_box, [0,0])
+                elif pref == 'right':
+                    self.screen.blit(green_box, [350,0])
+                elif pref == 'equal':
+                    self.screen.blit(green_box, [0,0])
+                    self.screen.blit(green_box, [350,0])
+                else:
+                    self.screen.blit(red_box, [0,0])
+                    self.screen.blit(red_box, [350,0])
+
+                pygame.display.update()
+                pygame.time.wait(100)
+
+                return pref                
 
 class Wall(pygame.sprite.Sprite):
     def __init__(self, row, col):

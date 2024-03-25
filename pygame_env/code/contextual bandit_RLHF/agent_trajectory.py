@@ -7,20 +7,11 @@ import pickle
 
 H = 5
 
-def det_coord(s):
-    row = (s // 5)
-    col = (s % 5)
-
-    return row, col
-
-def det_s(row, col):
-    return row * 5 + col
-
 def create_D():
     env = Grid()
     D = []
     sq = env.states_to_be_queried()
-    sq = [det_s(coord[0], coord[1]) for coord in sq]
+    sq = [env.det_s(coord[0], coord[1]) for coord in sq]
 
     for i in range(3):
         d = []
@@ -28,20 +19,23 @@ def create_D():
         init_s = random.choice(sq)
         d.append(init_s)
 
-        # determine coordiate of s
-        row, col = det_coord(init_s)
-
         for j in range(2):
             trajectory = []
-
-            # generate trajectory of length H
-            # env.show_inital(row, col)
+            # determine coordiate of s
+            row, col = env.det_coord(init_s)
+            env.move_player(row, col)
             done = False
+
+            # pick action and observe state H times
             for h in range(H):
                 if done:
-                    env.reset()
-
+                    done = env.reset()
+                    trajectory.append(0) # doesn't matter what action is taken in done state
+                    trajectory.append(env.det_s(4, 0)) # next state must be reset state
+                    continue
+                
                 # determine valid actions
+                row, col = env.get_state()
                 actions = env.allowed_actions(row, col)
 
                 # sample an action
@@ -51,16 +45,18 @@ def create_D():
                 # step 
                 done = env.step(a, render=False)
                 row, col = env.get_state()
-                trajectory.append(det_s(row, col))
+                trajectory.append(env.det_s(row, col))
             
             d.append(trajectory)            
 
         D.append(d)
 
-        # query human
-        init_row, init_col = det_coord(d[0])
+        # query human after gathering a pair of trajectory
+        init_row, init_col = env.det_coord(d[0])
         pref = env.query(init_row, init_col, d[1], d[2])
-        
+        print(pref)
+        D.append(pref)
+
     print(D)
 
 
