@@ -110,8 +110,7 @@ def solve(D, init_parameter, save):
 
                 
 if __name__ == '__main__':
-    # create_D()
-    env = Grid()
-    env.show_inital_2(0,0)
+    create_D()
+    # env = Grid()
 
 

@@ -98,9 +98,9 @@ class Grid():
         self.walls.draw(self.right_screen)
         self.goals.draw(self.left_screen)
         self.goals.draw(self.right_screen)
-        self.move_left_player(4,0)
+        self.move_left_player(row, col)
         self.left_player.draw(self.left_screen)
-        self.move_right_player(2,2)
+        self.move_right_player(row, col)
         self.right_player.draw(self.right_screen)
 
         self.screen.blit(self.left_screen, (0,0))
@@ -148,6 +148,63 @@ class Grid():
 
         return self.done
     
+    def step_2(self, left_action, right_action, render):
+        # left action
+        player_row, player_col = self.get_left_state()            
+        if ((left_action == 0) and (player_row > 0)): # up
+            self.move_left_player(player_row - 1, player_col)
+        elif ((left_action == 1) and (player_row < 4)): # down
+            self.move_left_player(player_row + 1, player_col)
+        elif ((left_action == 2) and (player_col > 0)): # left
+            self.move_left_player(player_row, player_col - 1)
+        elif ((left_action == 3) and (player_col < 4)): # right
+            self.move_left_player(player_row, player_col + 1)
+
+        # right action
+        player_row, player_col = self.get_right_state()            
+        if ((right_action == 0) and (player_row > 0)): # up
+            self.move_left_player(player_row - 1, player_col)
+        elif ((right_action == 1) and (player_row < 4)): # down
+            self.move_left_player(player_row + 1, player_col)
+        elif ((right_action == 2) and (player_col > 0)): # left
+            self.move_left_player(player_row, player_col - 1)
+        elif ((right_action == 3) and (player_col < 4)): # right
+            self.move_left_player(player_row, player_col + 1)
+
+        # render
+        if (render):
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
+                    
+            # inital game window
+            # background
+            self.clock.tick(self.FPS)
+            self.screen.fill("white")
+            self.left_screen.fill("white")
+            self.right_screen.fill("white")
+
+            for c in range (1, COLUMNS):
+                pygame.draw.line(self.left_screen, "gray", (c*BLOCKSIZE, 0), (c*BLOCKSIZE, self.left_screen.get_height()))
+                pygame.draw.line(self.right_screen, "gray", (c*BLOCKSIZE, 0), (c*BLOCKSIZE, self.right_screen.get_height()))
+            for r in range (1, ROWS):
+                pygame.draw.line(self.left_screen, "gray", (0, r*BLOCKSIZE), (self.left_screen.get_width(), r*BLOCKSIZE))
+                pygame.draw.line(self.right_screen, "gray", (0, r*BLOCKSIZE), (self.right_screen.get_width(), r*BLOCKSIZE))
+
+            # environment
+            self.walls.draw(self.left_screen)
+            self.walls.draw(self.right_screen)
+            self.goals.draw(self.left_screen)
+            self.goals.draw(self.right_screen)
+            self.left_player.draw(self.left_screen)
+            self.right_player.draw(self.right_screen)
+
+            self.screen.blit(self.left_screen, (0,0))
+            self.screen.blit(self.right_screen, (COLUMNS*BLOCKSIZE+SPACE,0))
+
+            pygame.display.flip()
+
     def states_to_be_queried(self):
         sq = []
         for row_idx, row in enumerate(self.world):
@@ -191,6 +248,18 @@ class Grid():
         row = p[0].rect.y // BLOCKSIZE
         col = p[0].rect.x // BLOCKSIZE
         return row, col
+    
+    def get_left_state(self):
+        p = self.left_player.sprites()
+        row = p[0].rect.y // BLOCKSIZE
+        col = p[0].rect.x // BLOCKSIZE
+        return row, col
+    
+    def get_right_state(self):
+        p = self.right_player.sprites()
+        row = p[0].rect.y // BLOCKSIZE
+        col = p[0].rect.x // BLOCKSIZE
+        return row, col
 
     def move_player(self, row, col):
         p = self.players.sprites()
@@ -208,22 +277,15 @@ class Grid():
         p[0].rect.x = col * BLOCKSIZE
     
     def query(self, init_row, init_col, traj1, traj2):
-        # trajectory 1
-        self.show_inital(init_row, init_col)
+        self.show_inital_2(init_row, init_col)
         for i in range(len(traj1)):
             if (i % 2 == 0):
-                self.step(traj1[i], render=True)
-        
-        # trajectory 1
-        self.show_inital(init_row, init_col)
-        for i in range(len(traj1)):
-            if (i % 2 == 0):
-                self.step(traj1[i], render=True)
-     
+                self.step_2(traj1[i], traj2[i], render=True)
+             
    
         pygame.time.wait(2000)
 
-        return pref            
+        # return pref            
 
     def get_input_from_human(self):
         while True:
