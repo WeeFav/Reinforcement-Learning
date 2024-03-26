@@ -4,6 +4,7 @@ import math
 import numpy as np
 from scipy import optimize
 import pickle
+import copy
 
 H = 5
 
@@ -13,7 +14,8 @@ def create_D():
     sq = env.states_to_be_queried()
     sq = [env.det_s(coord[0], coord[1]) for coord in sq]
 
-    for i in range(3):
+    i = 0
+    while i < 15:
         d = []
         # sample a state
         init_s = random.choice(sq)
@@ -29,7 +31,7 @@ def create_D():
             # pick action and observe state H times
             for h in range(H):
                 if done:
-                    done = env.reset()
+                    done = env.reset(render=False)
                     trajectory.append(0) # doesn't matter what action is taken in done state
                     trajectory.append(env.det_s(4, 0)) # next state must be reset state
                     continue
@@ -49,15 +51,18 @@ def create_D():
             
             d.append(trajectory)            
 
-        D.append(d)
 
         # query human after gathering a pair of trajectory
         init_row, init_col = env.det_coord(d[0])
         pref = env.query(init_row, init_col, d[1], d[2])
-        print(pref)
-        D.append(pref)
 
-    print(D)
+        if (pref != 'incomparable'):
+            d.append(pref)
+            D.append(d)
+            print(f"sample {i}")
+            i += 1
+
+    return D
 
 
 def phi(s, a):
@@ -71,27 +76,43 @@ def reward(parameter, s, a):
 def mle_loss(parameter, D):
     loss = 0
 
-    for i in range(len(D)):
-        s = D[i][0]
-        a0 = D[i][1]
-        a1 = D[i][2]
-        pref = D[i][3]
-        t0 = math.exp(reward(parameter, s, a0))
-        t1 = math.exp(reward(parameter, s, a1))
+    for d in D:
+        init_s = d[0]
+        traj0 = copy.deepcopy(d[1])
+        traj1 = copy.deepcopy(d[2])
+        traj0.insert(0, init_s)
+        traj1.insert(0, init_s)
+        pref = d[3]
+
+
+        r_traj0 = 0
+        for h in range(H):
+            s_idx = h * 2
+            a_idx = h * 2 + 1
+            r_traj0 += reward(parameter, traj0[s_idx], traj0[a_idx])
+
+        r_traj1 = 0
+        for h in range(H):
+            s_idx = h * 2
+            a_idx = h * 2 + 1
+            r_traj1 += reward(parameter, traj1[s_idx], traj1[a_idx])
+
+        exp_r_traj0 = math.exp(r_traj0)
+        exp_r_traj1 = math.exp(r_traj1)
+
 
         if pref == 'left':
-            p0 =  t0 / (t0 + t1)
+            p0 = exp_r_traj0 / (exp_r_traj0 + exp_r_traj1)
             curr_loss = math.log(p0)
         elif pref == 'right':
-            p1 =  t1 / (t0 + t1)
+            p1 =  exp_r_traj1 / (exp_r_traj0 + exp_r_traj1)
             curr_loss = math.log(p1)
         elif pref == 'equal':
-            p0 =  t0 / (t0 + t1)
-            p1 =  t1 / (t0 + t1)
+            p0 =  exp_r_traj0 / (exp_r_traj0 + exp_r_traj1)
+            p1 =  exp_r_traj1 / (exp_r_traj0 + exp_r_traj1)
             curr_loss = math.log(p0 + p1)
 
         loss += curr_loss
-    
     return -loss  
 
 def solve(D, init_parameter, save):
@@ -102,11 +123,35 @@ def solve(D, init_parameter, save):
             pickle.dump(result, fp)
             print('result saved successfully to file')
   
-    print(result.x)   
+    print(result.x) 
+
+def train():
+    print("querying....")
+    D = create_D(save=False)
+    print("optimizing....")
+    init_parameter = [0] * 100
+    solve(D, init_parameter, save=True)
+
+
+def test(result):
+    env = Grid()
+    env.reset(render=True)
+    while True:
+        done = False
+        env.reset(render=True)
+        while not done:
+            row, col = env.get_state()
+            s = env.det_s(row, col)
+            reward_s = result.x[s*4:s*4+4]
+            action = np.argmax(reward_s)
+            done = env.step(action, render=True)  
 
                 
 if __name__ == '__main__':
-    create_D()
-    # env = Grid()
+    # train()
 
+    # testing
+    with open('result.pkl', 'rb') as fp:
+        result = pickle.load(fp)
 
+    test(result)

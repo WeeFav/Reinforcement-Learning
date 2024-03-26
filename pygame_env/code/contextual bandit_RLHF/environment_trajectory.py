@@ -22,8 +22,9 @@ class Grid():
         self.screen = pygame.display.set_mode((2*COLUMNS*BLOCKSIZE+SPACE, ROWS*BLOCKSIZE))
         self.left_screen = pygame.Surface((COLUMNS*BLOCKSIZE, ROWS*BLOCKSIZE))
         self.right_screen = pygame.Surface((COLUMNS*BLOCKSIZE, ROWS*BLOCKSIZE))
+        self.mid_screen = pygame.Surface((COLUMNS*BLOCKSIZE, ROWS*BLOCKSIZE))
         self.clock = pygame.time.Clock()
-        self.FPS = 3
+        self.FPS = 4
         self.world = world.split('\n')[1:-1]
         self.walls = pygame.sprite.Group()
         self.goals = pygame.sprite.Group()
@@ -50,32 +51,50 @@ class Grid():
         self.goal_row = g[0].rect.y // BLOCKSIZE
         self.goal_col = g[0].rect.x // BLOCKSIZE
 
-    def reset(self):
+    def reset(self, render):
         self.done = False
         self.move_player(4, 0)
+        if (render):
+            self.render(inital=False)
         return self.done
 
 
-    def show_inital(self, row, col):
-        # inital game window
+    def render(self, inital, row=None, col=None):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+        # update game window
         # background
         self.clock.tick(self.FPS)
         self.screen.fill("white")
+        self.mid_screen.fill("white")
+
         for c in range (1, COLUMNS):
-            pygame.draw.line(self.screen, "gray", (c*BLOCKSIZE, 0), (c*BLOCKSIZE, self.screen.get_height()))
+            pygame.draw.line(self.mid_screen, "gray", (c*BLOCKSIZE, 0), (c*BLOCKSIZE, self.mid_screen.get_height()))
         for r in range (1, ROWS):
-            pygame.draw.line(self.screen, "gray", (0, r*BLOCKSIZE), (self.screen.get_width(), r*BLOCKSIZE))
+            pygame.draw.line(self.mid_screen, "gray", (0, r*BLOCKSIZE), (self.mid_screen.get_width(), r*BLOCKSIZE))
 
         # environment
-        self.walls.draw(self.screen)
-        self.goals.draw(self.screen)
-        self.move_player(row, col)
-        self.players.draw(self.screen)
+        self.walls.draw(self.mid_screen)
+        self.goals.draw(self.mid_screen)
 
+        if (inital == True):
+            self.move_player(row, col)
+
+        self.players.draw(self.mid_screen)
+
+        self.screen.blit(self.mid_screen, (175, 0))
         pygame.display.flip()
 
-    def render_2(self, left_row, left_col, right_row, right_col):
-        # inital game window
+    def render_2(self, left_row, left_col, right_row, right_col, color):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+        # update game window
         # background
         self.clock.tick(self.FPS)
         self.screen.fill("white")
@@ -96,14 +115,15 @@ class Grid():
         self.goals.draw(self.right_screen)
 
         self.move_left_player(left_row, left_col)
+        self.left_player_color(color)
         self.left_player.draw(self.left_screen)
 
         self.move_right_player(right_row, right_col)
+        self.right_player_color(color)
         self.right_player.draw(self.right_screen)
 
         self.screen.blit(self.left_screen, (0,0))
         self.screen.blit(self.right_screen, (COLUMNS*BLOCKSIZE+SPACE,0))             
-
         pygame.display.flip()
 
     def step(self, action, render):
@@ -125,25 +145,7 @@ class Grid():
 
         # render
         if (render):
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    quit()
-                    
-            # update game window
-            # background
-            self.clock.tick(self.FPS)
-            self.screen.fill("white")
-            for c in range (1, COLUMNS):
-                pygame.draw.line(self.screen, "gray", (c*BLOCKSIZE, 0), (c*BLOCKSIZE, self.screen.get_height()))
-            for r in range (1, ROWS):
-                pygame.draw.line(self.screen, "gray", (0, r*BLOCKSIZE), (self.screen.get_width(), r*BLOCKSIZE))
-
-            # environment
-            self.walls.draw(self.screen)
-            self.goals.draw(self.screen)
-            self.players.draw(self.screen)
-            pygame.display.flip()
+            self.render(inital=False)
 
         return self.done
     
@@ -225,19 +227,27 @@ class Grid():
         p = self.right_player.sprites()
         p[0].rect.y = row * BLOCKSIZE
         p[0].rect.x = col * BLOCKSIZE
-    
+
+    def left_player_color(self, color):
+        p = self.left_player.sprites()
+        p[0].image.fill(color)
+
+    def right_player_color(self, color):
+        p = self.right_player.sprites()
+        p[0].image.fill(color)
+   
     def query(self, init_row, init_col, left_traj, right_traj):
         pref = None
         # loop until get human input
         while True: 
-            self.render_2(init_row, init_col, init_row, init_col)
+            self.render_2(init_row, init_col, init_row, init_col, "red")
             for i in range(len(left_traj)):
                 if (i % 2 == 1):
                     left_row, left_col = self.det_coord(left_traj[i]) 
                     right_row, right_col = self.det_coord(right_traj[i]) 
-                    self.render_2(left_row, left_col, right_row, right_col)
+                    self.render_2(left_row, left_col, right_row, right_col, "yellow")
 
-            pygame.time.wait(2000)
+            pygame.time.wait(500)
 
             # human input
             for event in pygame.event.get():
