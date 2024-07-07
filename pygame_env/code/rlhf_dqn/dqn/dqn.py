@@ -154,7 +154,7 @@ class Agent():
         target_q_values = reward_batch + torch.from_numpy((1 - terminated_batch)).cuda() * self.discount_factor_g * target_action_values.max(dim=1)[0]
 
         current_action_values = self.policy_dqn(state_batch.cuda())
-        current_q_values = torch.gather(input=current_action_values, dim=1, index=action_batch)
+        current_q_values = torch.gather(input=current_action_values, dim=1, index=action_batch).squeeze()
 
         # Compute loss for the whole minibatch
         loss = self.loss_fn(target_q_values, current_q_values)
@@ -191,7 +191,7 @@ class Agent():
 
 if __name__ == '__main__':
     print("GPU:", torch.cuda.is_available())
-    maze = 'maze3'
+    maze = 'maze1'
     env = Grid(maze=maze, show_render=False)
     agent = Agent(env)
     agent.train(3000)
