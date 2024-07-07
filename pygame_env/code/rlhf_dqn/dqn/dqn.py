@@ -1,5 +1,6 @@
 ##############################################################################
-# Store NN as Agent attributes. Add cuda. 
+# Batch processing during optimization step.
+# Only compute loss in q_values according to the action taken instead of every q_values in that state.
 ##############################################################################
 
 from environment import Grid
@@ -10,6 +11,7 @@ import random
 import torch
 from torch import nn
 import torch.nn.functional as F
+import sys
 
 # Define model
 class DQN(nn.Module):
@@ -142,34 +144,20 @@ class Agent():
 
     # Optimize policy network
     def optimize(self, mini_batch):
+        state_batch = torch.from_numpy(np.array([t[0] for t in mini_batch]))
+        action_batch = torch.from_numpy(np.array([t[1] for t in mini_batch], dtype=np.int64)).unsqueeze(1).cuda()
+        new_state_batch = torch.from_numpy(np.array([t[2] for t in mini_batch]))
+        reward_batch = torch.from_numpy(np.array([t[3] for t in mini_batch])).cuda()
+        terminated_batch = np.array([t[4] for t in mini_batch])
 
-        # Get number of input nodes
-        num_states = self.policy_dqn.fc1.in_features
+        target_action_values = self.target_dqn(new_state_batch.cuda())
+        target_q_values = reward_batch + torch.from_numpy((1 - terminated_batch)).cuda() * self.discount_factor_g * target_action_values.max(dim=1)[0]
 
-        current_q_list = []
-        target_q_list = []
-                                  
-        for state, action, new_state, reward, terminated in mini_batch:
+        current_action_values = self.policy_dqn(state_batch.cuda())
+        current_q_values = torch.gather(input=current_action_values, dim=1, index=action_batch)
 
-            if terminated: 
-                # Agent either reached goal (reward=1) or fell into hole (reward=0)
-                # When in a terminated state, target q value should be set to the reward.
-                target = torch.FloatTensor([reward])
-            else:
-                target = reward + self.discount_factor_g * self.target_dqn(torch.from_numpy(new_state).cuda()).max()
-
-            # Get the current set of Q values
-            current_q = self.policy_dqn(torch.from_numpy(state).cuda())
-            current_q_list.append(current_q)
-
-            # Get the target set of Q values
-            target_q = self.target_dqn(torch.from_numpy(state).cuda()) 
-            # Adjust the specific action to the target that was just calculated
-            target_q[action] = target
-            target_q_list.append(target_q)
-                
         # Compute loss for the whole minibatch
-        loss = self.loss_fn(torch.stack(current_q_list), torch.stack(target_q_list))
+        loss = self.loss_fn(target_q_values, current_q_values)
 
         # Optimize the model
         self.optimizer.zero_grad()
@@ -203,7 +191,7 @@ class Agent():
 
 if __name__ == '__main__':
     print("GPU:", torch.cuda.is_available())
-    maze = 'maze1'
+    maze = 'maze3'
     env = Grid(maze=maze, show_render=False)
     agent = Agent(env)
     agent.train(3000)

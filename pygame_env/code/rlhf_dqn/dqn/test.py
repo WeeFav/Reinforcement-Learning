@@ -1,6 +1,7 @@
 import torch
 import numpy as np
-a = [torch.tensor(1),torch.tensor(2),torch.tensor(3)]
-b = [4,5,6]
-c = torch.stack(a)
-print(c)
+a = np.array([(1,2,3), (4,5,6)])
+a = torch.from_numpy(a)
+idx = torch.from_numpy(np.array([0,1], dtype=np.int64)).unsqueeze(1)
+b = torch.gather(input=a, dim=1, index=idx)
+print(b)
