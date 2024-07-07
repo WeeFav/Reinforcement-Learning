@@ -8,11 +8,20 @@ COLUMNS = 5
 BLOCKSIZE = 50
 SPACE = 2 * BLOCKSIZE
 
-world=\
+# maze1=\
+# """
+# wwwwg
+# wwww 
+# w    
+# w www
+# p www
+# """
+
+maze2=\
 """
-wwwwg
-wwww 
-w    
+g   w
+www w
+w   w
 w www
 p www
 """
@@ -25,7 +34,7 @@ class Grid():
         self.mid_screen = pygame.Surface((COLUMNS*BLOCKSIZE, ROWS*BLOCKSIZE))
         self.clock = pygame.time.Clock()
         self.FPS = 4
-        self.world = world.split('\n')[1:-1]
+        self.world = maze2.split('\n')[1:-1]
         self.walls = pygame.sprite.Group()
         self.goals = pygame.sprite.Group()
         self.players = pygame.sprite.Group()
@@ -142,6 +151,8 @@ class Grid():
         player_row, player_col = self.get_state()            
         if (player_row == self.goal_row and player_col == self.goal_col):
             self.done = True
+        else:
+            self.done = False
 
         # render
         if (render):
@@ -247,7 +258,7 @@ class Grid():
                     right_row, right_col = self.det_coord(right_traj[i]) 
                     self.render_2(left_row, left_col, right_row, right_col, "yellow")
 
-            pygame.time.wait(500)
+            pygame.time.wait(1000)
 
             # human input
             for event in pygame.event.get():

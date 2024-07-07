@@ -8,17 +8,20 @@ import copy
 
 H = 5
 
-def create_D():
+def create_D(save, D_filename=None, continue_D=None):
     env = Grid()
-    D = []
+    if continue_D is not None:
+        D = continue_D
+    else:
+        D = []
     sq = env.states_to_be_queried()
     sq = [env.det_s(coord[0], coord[1]) for coord in sq]
-
     i = 0
-    while i < 15:
+    while i < 5:
         d = []
         # sample a state
         init_s = random.choice(sq)
+        init_s = 8
         d.append(init_s)
 
         for j in range(2):
@@ -61,6 +64,11 @@ def create_D():
             D.append(d)
             print(f"sample {i}")
             i += 1
+
+    if save:
+        with open(D_filename, 'wb') as fp:
+            pickle.dump(D, fp)
+            print(f'{D_filename} saved successfully to file')
 
     return D
 
@@ -115,22 +123,23 @@ def mle_loss(parameter, D):
         loss += curr_loss
     return -loss  
 
-def solve(D, init_parameter, save):
+def solve(D, init_parameter, save, result_filename):
     result = optimize.minimize(mle_loss, init_parameter, args=D)
 
     if save:
-        with open('result_pair.pkl', 'wb') as fp:
+        with open(result_filename, 'wb') as fp:
             pickle.dump(result, fp)
-            print('result saved successfully to file')
+            print(f'{result_filename} saved successfully to file')
   
     print(result.x) 
 
-def train():
-    print("querying....")
-    D = create_D(save=False)
+def train(D_filename, result_filename, D=None, continue_D=None):
+    if D is None:
+        print("querying....")
+        D = create_D(save=False, D_filename=D_filename, continue_D=continue_D)
     print("optimizing....")
     init_parameter = [0] * 100
-    solve(D, init_parameter, save=True)
+    solve(D, init_parameter, save=True, result_filename=result_filename)
 
 
 def test(result):
@@ -143,15 +152,35 @@ def test(result):
             row, col = env.get_state()
             s = env.det_s(row, col)
             reward_s = result.x[s*4:s*4+4]
-            action = np.argmax(reward_s)
+            
+            non_zero_reward = [(i, r) for i, r in enumerate(reward_s) if r != 0]
+            
+            action = max(non_zero_reward, key=lambda x: x[1])[0]
+
             done = env.step(action, render=True)  
 
                 
 if __name__ == '__main__':
-    # train()
+    D_filename = "D_trajectory_maze2.pkl"
+    result_filename = "result_trajectory_maze2.pkl"
+
+    # with open(D_filename, 'rb') as fp:
+    #     D = pickle.load(fp)
+
+    train(None, result_filename)
 
     # testing
-    with open('result.pkl', 'rb') as fp:
-        result = pickle.load(fp)
+    # with open(result_filename, 'rb') as fp:
+    #     result = pickle.load(fp)
+    # test(result)
 
-    test(result)
+    # for s in range(25):
+    #     print(f"state: {s}")
+    #     for a in range(4):
+    #         r = reward(result.x, s, a)
+    #         print(f"action {a} : {r}, ", end="")
+    #     print("")
+            
+
+    # s = 8
+    # print(result.x[s*4:s*4+4])

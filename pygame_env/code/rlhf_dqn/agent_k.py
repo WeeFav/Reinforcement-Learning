@@ -5,6 +5,8 @@ import numpy as np
 from scipy import optimize
 import pickle
 import itertools
+from dqn_claude import DQN
+import torch
 
 def allowed_actions(x, y):
     actions = [0, 1, 2, 3]
@@ -64,39 +66,28 @@ def find_max_prob_list(prob_list):
     max_prob_list = [i for i, j in enumerate(prob_list) if j == m]
     return max_prob_list
 
-def det_coord(s):
-    row = (s // 5)
-    col = (s % 5)
-
-    return row, col
-
-def det_s(row, col):
-    return row * 5 + col
-
-def create_D(save):
-    env = Grid()
+def create_D(maze):
+    env = Grid(maze=maze, show_render=False)
     D = []
-    sq = env.states_to_be_queried()
-    sq = [det_s(coord[0], coord[1]) for coord in sq]
-
-    for s in sq:
-        # determine coordiate of s
-        curr_row, curr_col = det_coord(s)
+    
+    valid_pos = env.get_valid_pos()
+    for (row, col) in valid_pos:
         # query human for ranking
-        rank = env.query(curr_row, curr_col)
-        D.append([s,0,1,2,3,rank])
+        rank, state = env.query(row, col)
+        D.append((state, rank))
 
-    if save:
-        with open('D.pkl', 'wb') as fp:
-            pickle.dump(D, fp)
-            print('D saved successfully to file')
+    with open(f'D_{maze}.pkl', 'wb') as fp:
+        pickle.dump(D, fp)
+        print(f'D_{maze} saved successfully to file')
 
     return D
 
 def phi(s, a):
-    feature = [0] * (25 * 4)
-    feature[s*4 + a] = 1
-    return feature
+    env = Grid(maze='maze1', show_render=False)
+    model = DQN(in_states=env.obs_space, in_actions=len(env.action_space))
+    model.load_state_dict(torch.load("model.pt"))
+    feature = model.get_feature(s, a)
+    return feature.detach().numpy()
 
 def reward(parameter, s, a):
     return np.dot(parameter, phi(s, a))
@@ -106,31 +97,37 @@ def mle_loss(parameter, D):
 
     for i in range(len(D)):
         for j in range(4):
-            t1 = math.exp(reward(parameter, D[i][0], D[i][5][j]))
+            state_tensor = torch.from_numpy(D[i][0])
+            action_tensor = torch.zeros(4)
+            action = D[i][1][j]
+            action_tensor[action] = 1
+            t1 = math.exp(reward(parameter, state_tensor, action_tensor))
             
             t2 = 0
             for k in range(j, 4):
-                t2 += math.exp(reward(parameter, D[i][0], D[i][5][k]))
+                action_tensor = torch.zeros(4)
+                action = D[i][1][k]
+                action_tensor[action] = 1
+                t2 += math.exp(reward(parameter, state_tensor, action_tensor))
 
             curr_loss = math.log(t1/t2)
             loss += curr_loss
     
-    return -1 / len(D) * loss
+    return -1 / len(D) * loss 
 
-def solve(D, init_parameter, save):
+def solve(D, init_parameter, save, result_filename):
     result = optimize.minimize(mle_loss, init_parameter, args=D)
 
     if save:
-        with open('result.pkl', 'wb') as fp:
+        with open(f'{result_filename}.pkl', 'wb') as fp:
             pickle.dump(result, fp)
-            print('result saved successfully to file')
+            print(f'{result_filename} saved successfully to file')
+  
+    print(result.x) 
 
-def train():
-    print("querying....")
-    D = create_D(save=False)
-    print("optimizing....")
-    init_parameter = [0] * 100
-    solve(D, init_parameter, save=True)
+def train(D, result_filename):
+    init_parameter = [0] * 128
+    solve(D, init_parameter, save=True, result_filename=result_filename)
 
 def test(result):
     env = Grid()
@@ -145,14 +142,26 @@ def test(result):
             done = env.step(action)
          
 if __name__ == '__main__':
-    # training
-    train()
+    maze = 'maze1'
+    create_D(maze)
+    # with open(f'D_{maze}.pkl', 'rb') as fp:
+    #     D = pickle.load(fp)
+    # train(D, f'result_{maze}')
+
+    # s = D[0][0]
+    # s = torch.from_numpy(s)
+    # action_tensor = torch.zeros(4)
+    # a = D[0][1][0]
+    # action_tensor[a] = 1
+
+    # print(s, action_tensor)
+    # phi(s, action_tensor)
+
 
     # testing
-    with open('result.pkl', 'rb') as fp:
-        result = pickle.load(fp)
-
-    test(result)
+    # with open(result_filename, 'rb') as fp:
+    #     result = pickle.load(fp)
+    # test(result)
 
 
     # synthetic_reward = set_synthetic_reward()
