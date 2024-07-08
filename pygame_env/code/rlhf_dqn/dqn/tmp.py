@@ -1,5 +1,6 @@
 ##############################################################################
-# optimize network every step instead of every episode
+# Batch processing during optimization step.
+# Only compute loss in q_values according to the action taken instead of every q_values in that state.
 ##############################################################################
 
 from environment import Grid
@@ -194,5 +195,5 @@ if __name__ == '__main__':
     maze = 'maze1'
     env = Grid(maze=maze, show_render=False)
     agent = Agent(env)
-    agent.train(3000)
+    # agent.train(3000)
     agent.test(10)
