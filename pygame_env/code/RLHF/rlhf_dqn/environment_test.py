@@ -40,9 +40,9 @@ wwwwwwwwwwwww
 maze3=\
 """
 wwwwww
-w  g w
-w    w 
-www  w
+w   gw
+w ww w 
+w ww w
 wp   w
 wwwwww 
 """
@@ -68,7 +68,7 @@ class Grid():
             self.reset_pos = (4, 1)
         self.screen = pygame.display.set_mode((self.COLUMNS*BLOCKSIZE, self.ROWS*BLOCKSIZE))
         self.clock = pygame.time.Clock()
-        self.FPS = 4
+        self.FPS = 5
         self.clock.tick(self.FPS)
         self.show_render = show_render
 
@@ -96,10 +96,14 @@ class Grid():
         self.goal_row, self.goal_col = self.get_goal_pos()
         self.wall_list = self.get_wall_pos()
 
-    def reset(self):
+    def reset(self, row=None, col=None):
         self.done = False
         self.steps_taken = 0
-        self.move_player(*self.reset_pos)
+        if row is not None or col is not None:
+            self.move_player(row, col)
+        else:
+            self.move_player(*self.reset_pos)
+
         if self.show_render:
             self.render()
 
@@ -291,7 +295,7 @@ class Grid():
             font = font = pygame.font.Font('freesansbold.ttf', 20)
             text1 = font.render(display_text, True, [0, 0, 0], [255, 255, 255])
             textRect1 = text1.get_rect()
-            textRect1.center = (230, 475)
+            textRect1.center = (new_window.get_width()//2, new_window.get_height()-25)
             new_window.blit(text1, textRect1)
             pygame.display.update()
    

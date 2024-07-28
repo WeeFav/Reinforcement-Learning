@@ -40,15 +40,21 @@ wwwwwwwwwwwww
 maze3=\
 """
 wwwwww
-w  g w
-w    w 
-www  w
+w   gw
+w ww w 
+w ww w
 wp   w
 wwwwww 
 """
 
+action_dict = {0:'up',
+               1:'down',
+               2:'left',
+               3:'right'}
+
 class Grid():
     def __init__(self, maze, show_render):
+        self.maze = maze
         if maze == 'maze1':
             self.world = maze1.split('\n')[1:-1]
             self.ROWS = 9
@@ -63,7 +69,7 @@ class Grid():
             self.reset_pos = (4, 1)
         self.screen = pygame.display.set_mode((self.COLUMNS*BLOCKSIZE, self.ROWS*BLOCKSIZE))
         self.clock = pygame.time.Clock()
-        self.FPS = 3
+        self.FPS = 7
         self.clock.tick(self.FPS)
         self.show_render = show_render
 
@@ -76,6 +82,7 @@ class Grid():
 
         self.done = False
         self.steps_taken = 0
+        self.MAX_STEPS = 200
 
         # building the maze
         for row_idx, row in enumerate(self.world):
@@ -91,10 +98,14 @@ class Grid():
         self.goal_row, self.goal_col = self.get_goal_pos()
         self.wall_list = self.get_wall_pos()
 
-    def reset(self):
+    def reset(self, row=None, col=None):
         self.done = False
         self.steps_taken = 0
-        self.move_player(*self.reset_pos)
+        if row is not None or col is not None:
+            self.move_player(row, col)
+        else:
+            self.move_player(*self.reset_pos)
+
         if self.show_render:
             self.render()
 
@@ -158,7 +169,7 @@ class Grid():
         else:
             self.done = False
         # check if truncated
-        if self.steps_taken > 200 and self.done == False:
+        if self.steps_taken > self.MAX_STEPS and self.done == False:
             truncated = True
         else:
             truncated = False
@@ -173,11 +184,13 @@ class Grid():
     
     def get_reward(self, next_row, next_col):
         if (next_row == self.goal_row and next_col == self.goal_col):
-            reward = 1
+            reward = 10
         # elif ((next_row, next_col) in self.wall_list):
         #     reward = -1
+        elif self.steps_taken > self.MAX_STEPS:
+            reward = -9
         else:
-            reward = 0
+            reward = -1
         return reward
     
     def get_env_state(self):
@@ -223,6 +236,76 @@ class Grid():
         p = self.players.sprites()
         p[0].rect.y = row * BLOCKSIZE
         p[0].rect.x = col * BLOCKSIZE
+
+    def get_valid_pos(self):
+        valid_pos = []
+        for row in range(1, self.ROWS):
+            for col in range(1, self.COLUMNS):
+                if (row, col) not in self.wall_list:
+                    valid_pos.append((row, col))
+        return valid_pos
+    
+    def get_input_from_human(self):
+        while True:
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == KEYDOWN and event.key == K_UP:
+                    return 0
+                elif event.type == KEYDOWN and event.key == K_DOWN:
+                    return 1
+                elif event.type == KEYDOWN and event.key == K_LEFT:
+                    return 2
+                elif event.type == KEYDOWN and event.key == K_RIGHT:
+                    return 3 
+
+    def query(self, row, col):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+        new_window = pygame.display.set_mode((self.COLUMNS*BLOCKSIZE, self.ROWS*BLOCKSIZE+50))
+        # background
+        self.clock.tick(self.FPS)
+        new_window.fill("white")
+
+        # draw lines
+        for c in range (1, self.COLUMNS):
+            pygame.draw.line(new_window, "gray", (c*BLOCKSIZE, 0), (c*BLOCKSIZE, new_window.get_height()-50))
+        for r in range (1, self.ROWS):
+            pygame.draw.line(new_window, "gray", (0, r*BLOCKSIZE), (new_window.get_width(), r*BLOCKSIZE))
+
+        # environment
+        self.walls.draw(new_window)
+        self.goals.draw(new_window)
+        self.move_player(row, col)
+        self.players.draw(new_window)
+
+        pygame.display.flip()
+
+        # text
+        display_text = ""
+        rank = []
+        for i in range(4):
+            pref = self.get_input_from_human()
+            rank.append(pref)
+            if i != 3:
+                display_text += action_dict[pref] + "->"
+            else:
+                display_text += action_dict[pref]
+            
+            font = font = pygame.font.Font('freesansbold.ttf', 20)
+            text1 = font.render(display_text, True, [0, 0, 0], [255, 255, 255])
+            textRect1 = text1.get_rect()
+            textRect1.center = (new_window.get_width()//2, new_window.get_height()-25)
+            new_window.blit(text1, textRect1)
+            pygame.display.update()
+   
+        pygame.time.wait(500)
+
+        return rank, self.get_env_state()
    
 class Wall(pygame.sprite.Sprite):
     def __init__(self, row, col):
@@ -285,7 +368,7 @@ if __name__ == '__main__':
         while action is None:
             action = human_action()
         new_obs, rew, done, truncated = env.step(action)
-        print(truncated)
+        print(rew, done)
 
         if done:
             obs = env.reset()

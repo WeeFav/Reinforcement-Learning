@@ -1,5 +1,5 @@
 import random
-from environment import Grid
+from custom_environment import Grid
 from torch import nn
 import torch
 import torch.nn as nn

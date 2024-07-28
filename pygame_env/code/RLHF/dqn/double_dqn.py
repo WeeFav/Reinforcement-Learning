@@ -1,6 +1,6 @@
 # https://dilithjay.com/blog/ddqn
 
-from environment import Grid
+from custom_environment import Grid
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import deque

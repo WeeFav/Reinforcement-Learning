@@ -1,8 +1,8 @@
 ##############################################################################
-# New DQN state-action
+# optimize network every step instead of every episode
 ##############################################################################
 
-from environment import Grid
+from custom_environment import Grid
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import deque
@@ -14,15 +14,14 @@ import sys
 
 # Define model
 class DQN(nn.Module):
-    def __init__(self, in_states, in_actions):
+    def __init__(self, in_states, out_actions):
         super().__init__()
 
         # Define network layers
-        self.fc1 = nn.Linear(in_states + in_actions, 128, dtype=torch.float64)   # first fully connected layer
-        self.out = nn.Linear(128, 1, dtype=torch.float64) # ouptut layer w
+        self.fc1 = nn.Linear(in_states, 128, dtype=torch.float64)   # first fully connected layer
+        self.out = nn.Linear(128, out_actions, dtype=torch.float64) # ouptut layer w
 
-    def forward(self, state, action):
-        x = torch.cat([state, action], dim=-1)
+    def forward(self, x):
         x = F.relu(self.fc1(x)) # Apply rectified linear unit (ReLU) activation
         x = self.out(x)         # Calculate output
         return x
@@ -58,27 +57,14 @@ class Agent():
         self.memory = ReplayMemory(self.replay_memory_size)
 
         # Neural Network
-        self.policy_dqn = DQN(in_states=self.num_states, in_actions=self.num_actions)
-        self.target_dqn = DQN(in_states=self.num_states, in_actions=self.num_actions)
+        self.policy_dqn = DQN(in_states=self.num_states, out_actions=self.num_actions)
+        self.target_dqn = DQN(in_states=self.num_states, out_actions=self.num_actions)
         self.policy_dqn.cuda()
         self.target_dqn.cuda()
         self.target_dqn.load_state_dict(self.policy_dqn.state_dict()) # Make the target and policy networks the same (copy weights/biases from one network to the other)
         self.loss_fn = nn.MSELoss()          # NN Loss function. MSE=Mean Squared Error can be swapped to something else.
         self.optimizer = torch.optim.Adam(self.policy_dqn.parameters(), lr=self.learning_rate_a)
 
-    def get_one_hot_action(self, action):
-        one_hot_action = torch.zeros(self.num_actions, dtype=torch.float64)
-        one_hot_action[action] = 1
-        return one_hot_action
-    
-    def get_state_batch(self, state):
-        state_batch = [torch.from_numpy(state) for _ in range(self.num_actions)]
-        return torch.stack(state_batch)
-
-    def get_action_batch(self):
-        action_batch = [self.get_one_hot_action(action) for action in range(self.num_actions)]
-        return torch.stack(action_batch)
-    
     def train(self, episodes):
         # List to keep track of rewards collected per episode. Initialize list to 0's.
         rewards_per_episode = np.zeros(episodes)
@@ -103,9 +89,7 @@ class Agent():
                 else:
                     # select best action            
                     with torch.no_grad():
-                        state_batch = self.get_state_batch(state)
-                        action_batch = self.get_action_batch()
-                        action = self.policy_dqn(state_batch.cuda(), action_batch.cuda()).detach().squeeze().argmax().item()
+                        action = self.policy_dqn(torch.from_numpy(state).cuda()).detach().argmax().item()
 
                 # Execute action
                 new_state, reward, terminated, truncated = self.env.step(action)
@@ -117,25 +101,26 @@ class Agent():
                 state = new_state
 
                 # Increment step counter
-                step_count += 1 
+                step_count += 1
+
+                # Check if enough experience has been collected and if at least 1 reward has been collected
+                if len(self.memory) > self.mini_batch_size and np.sum(rewards_per_episode) > 0:
+                    mini_batch = self.memory.sample(self.mini_batch_size)
+                    self.optimize(mini_batch)  
 
             # Keep track of the rewards collected per episode.
             if reward == 1:
                 rewards_per_episode[i] = 1
 
-            # Check if enough experience has been collected and if at least 1 reward has been collected
-            if len(self.memory) > self.mini_batch_size and np.sum(rewards_per_episode) > 0:
-                mini_batch = self.memory.sample(self.mini_batch_size)
-                self.optimize(mini_batch) 
 
-                # Decay epsilon
-                self.epsilon = max(self.epsilon - 1/episodes, 0)
-                epsilon_history.append(self.epsilon)
+            # Decay epsilon
+            self.epsilon = max(self.epsilon - 1/episodes, 0)
+            epsilon_history.append(self.epsilon)
 
-                # Copy policy network to target network after a certain number of steps
-                if step_count > self.network_sync_rate:
-                    self.target_dqn.load_state_dict(self.policy_dqn.state_dict())
-                    step_count = 0
+            # Copy policy network to target network after a certain number of steps
+            if step_count > self.network_sync_rate:
+                self.target_dqn.load_state_dict(self.policy_dqn.state_dict())
+                step_count = 0
 
         # Save policy
         torch.save(self.policy_dqn.state_dict(), "model.pt")
@@ -159,25 +144,20 @@ class Agent():
 
     # Optimize policy network
     def optimize(self, mini_batch):
-        current_q_list = []
-        target_q_list = []
+        state_batch = torch.from_numpy(np.array([t[0] for t in mini_batch]))
+        action_batch = torch.from_numpy(np.array([t[1] for t in mini_batch], dtype=np.int64)).unsqueeze(1).cuda()
+        new_state_batch = torch.from_numpy(np.array([t[2] for t in mini_batch]))
+        reward_batch = torch.from_numpy(np.array([t[3] for t in mini_batch])).cuda()
+        terminated_batch = np.array([t[4] for t in mini_batch])
 
-        for state, action, new_state, reward, terminated in mini_batch:
+        target_action_values = self.target_dqn(new_state_batch.cuda())
+        target_q_values = reward_batch + torch.from_numpy((1 - terminated_batch)).cuda() * self.discount_factor_g * target_action_values.max(dim=1)[0]
 
-            if terminated:
-                target = torch.tensor(reward).cuda()
-            else:
-                new_state_batch = self.get_state_batch(new_state)
-                action_batch = self.get_action_batch()
-                target = reward + self.discount_factor_g * self.target_dqn(new_state_batch.cuda(), action_batch.cuda()).squeeze().max()
+        current_action_values = self.policy_dqn(state_batch.cuda())
+        current_q_values = torch.gather(input=current_action_values, dim=1, index=action_batch).squeeze()
 
-            current_q_value = self.policy_dqn(torch.from_numpy(state).cuda(), self.get_one_hot_action(action).cuda()).squeeze()
-
-            current_q_list.append(current_q_value)
-            target_q_list.append(target)
-        
         # Compute loss for the whole minibatch
-        loss = self.loss_fn(torch.stack(target_q_list), torch.stack(current_q_list))
+        loss = self.loss_fn(target_q_values, current_q_values)
 
         # Optimize the model
         self.optimizer.zero_grad()
@@ -190,7 +170,7 @@ class Agent():
         self.env.show_render = True
 
         # Load learned policy
-        policy_dqn = DQN(in_states=self.num_states, in_actions=self.num_actions) 
+        policy_dqn = DQN(in_states=self.num_states, out_actions=self.num_actions) 
         policy_dqn.load_state_dict(torch.load("model.pt"))
         policy_dqn.eval()    # switch model to evaluation mode
 
@@ -201,12 +181,10 @@ class Agent():
             truncated = False       # True when agent takes more than 200 actions            
 
             # Agent navigates map until it falls into a hole (terminated), reaches goal (terminated), or has taken 200 actions (truncated).
-            while(not terminated and not truncated):
+            while(not terminated and not truncated):  
                 # Select best action   
                 with torch.no_grad():
-                    state_batch = self.get_state_batch(state)
-                    action_batch = self.get_action_batch()
-                    action = policy_dqn(state_batch, action_batch).squeeze().argmax().item()
+                    action = policy_dqn(torch.from_numpy(state)).argmax().item()
 
                 # Execute action
                 state, reward, terminated, truncated = self.env.step(action)
@@ -216,5 +194,5 @@ if __name__ == '__main__':
     maze = 'maze1'
     env = Grid(maze=maze, show_render=False)
     agent = Agent(env)
-    # agent.train(3000)
+    agent.train(3000)
     agent.test(10)
