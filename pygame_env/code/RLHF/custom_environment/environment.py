@@ -13,7 +13,7 @@ wwwwwwwww
 w   w   w
 w     g w
 w   w   w
-ww www ww
+ww wwwwww
 w   w   w
 w p     w
 w   w   w
@@ -241,7 +241,7 @@ class Grid():
         valid_pos = []
         for row in range(1, self.ROWS):
             for col in range(1, self.COLUMNS):
-                if (row, col) not in self.wall_list:
+                if (row, col) not in self.wall_list and (row, col) != (self.goal_row, self.goal_col):
                     valid_pos.append((row, col))
         return valid_pos
     

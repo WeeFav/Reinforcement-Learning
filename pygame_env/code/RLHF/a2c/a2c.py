@@ -1,5 +1,5 @@
 ##############################################################################
-# Init
+# env reset now reset player to random position
 ##############################################################################
 
 import numpy as np
@@ -8,6 +8,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import sys  
+import random
 
 from custom_environment.environment import Grid
 
@@ -16,22 +17,22 @@ class ActorCritic(nn.Module):
         super().__init__()
 
         # actor
-        self.actor_fc1 = nn.Linear(num_states, 128, dtype=torch.float64)   
-        self.actor_fc2 = nn.Linear(128, 128, dtype=torch.float64)   
-        self.actor_out = nn.Linear(128, num_actions, dtype=torch.float64)
+        self.actor_fc1 = nn.Linear(num_states, 256, dtype=torch.float64)   
+        # self.actor_fc2 = nn.Linear(128, 128, dtype=torch.float64)   
+        self.actor_out = nn.Linear(256, num_actions, dtype=torch.float64)
         # critic
-        self.critic_fc1 = nn.Linear(num_states, 128, dtype=torch.float64)   
-        self.critic_fc2 = nn.Linear(128, 128, dtype=torch.float64)   
-        self.critic_out = nn.Linear(128, 1, dtype=torch.float64)
+        self.critic_fc1 = nn.Linear(num_states, 256, dtype=torch.float64)   
+        # self.critic_fc2 = nn.Linear(128, 128, dtype=torch.float64)   
+        self.critic_out = nn.Linear(256, 1, dtype=torch.float64)
 
     def forward(self, state):
         # actor
         x = F.relu(self.actor_fc1(state))
-        x = F.relu(self.actor_fc2(x))
+        # x = F.relu(self.actor_fc2(x))
         x = F.softmax(self.actor_out(x), dim=-1)
         # critic
         y = F.relu(self.critic_fc1(state))
-        y = F.relu(self.critic_fc2(y))
+        # y = F.relu(self.critic_fc2(y))
         y = self.critic_out(y)    
         return x, y
 
@@ -42,7 +43,7 @@ class Agent():
         self.num_actions = len(env.action_space)
 
         # Hyperparameters (adjustable)
-        self.learning_rate_a = 0.0003        
+        self.learning_rate_a = 0.001        
         self.discount_factor_g = 0.9           
 
         # Neural Network
@@ -65,7 +66,9 @@ class Agent():
             dones = []
 
             # print(i)
-            state = self.env.reset()     
+            valid_pos = self.env.get_valid_pos()
+            row, col = random.choice(valid_pos)
+            state = self.env.reset(row, col)     
             terminated = False      
             truncated = False
 
@@ -121,7 +124,7 @@ class Agent():
             # sum_rewards[x] = np.sum(all_rewards[max(0, x-100):(x+1)])
             sum_rewards[x] = all_rewards[x]
         plt.plot(sum_rewards)
-        plt.savefig('a2c/graph.png')
+        plt.savefig('a2c/graph1.png')
 
     def test(self, episodes):
         self.env.show_render = True
